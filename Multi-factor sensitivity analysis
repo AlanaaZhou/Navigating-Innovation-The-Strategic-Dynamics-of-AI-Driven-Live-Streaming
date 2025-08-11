@@ -1,0 +1,127 @@
+syms x y z a b b1 b2 w1 w2 w3 w4 c1 c2 B q I;
+
+% Brand
+v11 = (w1*(I+B)-c1)*(1-a-b1)*y*z + ...
+      (w2*(I+B)-c1)*(1-a-b2)*y*(1-z) + ...
+      (b*w1*(I+B)-c1)*(1-a-b1)*(1-y)*z + ...
+      (b*w2*(I+B)-c1)*(1-a-b2)*(1-y)*(1-z);
+v12 = (w3*I)*(1-a-b1)*y*z + ...
+      (w4*I)*(1-a-b2)*y*(1-z) + ...
+      (b*w3*I)*(1-a-b1)*(1-y)*z + ...
+      (b*w4*I)*(1-a-b2)*(1-y)*(1-z);
+v1 = v11 * x + (1-x) * v12;
+fx = x * (v11 - v1);
+
+% MCN
+v21 = x * z * (a * (w1*(I+B)-c1)) + ...
+      x * (1-z) * (a * (w2*(I+B)-c1)) + ...
+      (1-x) * z * (a * w3 * I) + ...
+      (1-x) * (1-z) * (a * w4 * I);
+v22 = x * z * (a * (b * w1*(I+B) - c1) - q) + ...
+      x * (1-z) * (a * (b * w2*(I+B) - c1)) + ...
+      (1-x) * z * (a * (b * w3 * I) - q) + ...
+      (1-x) * (1-z) * (a * b * w4 * I);
+v2 = y * v21 + (1-y) * v22;
+fy = y * (v21 - v2);
+
+% Platform
+v31 = x * y * (b1 * (w1*(I+B)-c1) - c2) + ...
+      x * (1-y) * (b1 * (b * w1*(I+B)-c1) + q - c2) + ...
+      (1-x) * y * (b1 * w3 * I - c2) + ...
+      (1-x) * (1-y) * (b1 * (b * w3 * I) - c2 + q);
+v32 = x * y * (b2 * (w2*(I+B)-c1)) + ...
+      x * (1-y) * (b2 * (b * w2*(I+B)-c1)) + ...
+      (1-x) * y * (b2 * w4 * I) + ...
+      (1-x) * (1-y) * (b2 * b * w4 * I);
+v3 = z * v31 + (1-z) * v32;
+fz = z * (v31 - v3);
+
+fx_num = matlabFunction(fx, 'Vars', [x, y, z, a, b, b1, b2, w1, w2, w3, w4, c1, c2, B, q, I]);
+fy_num = matlabFunction(fy, 'Vars', [x, y, z, a, b, b1, b2, w1, w2, w3, w4, c1, c2, B, q, I]);
+fz_num = matlabFunction(fz, 'Vars', [x, y, z, a, b, b1, b2, w1, w2, w3, w4, c1, c2, B, q, I]);
+
+% change "parameter setting" & "two parameter setting" for different two-factor sensitivity analysis
+% parameter setting
+a = 0.4; b = 0.9; b1 = 0.3; b2 = 0.15;
+w2 = 1.2; w3 = 1.2; w4 = 0.9; 
+B = 0.8; c1 = 0.3; c2 = 0.1; 
+q = 0.15; I = 1; 
+
+% two parameter setting 
+w1_values = [0.95, 0.9, 0.85, 0.8, 0.75];
+w3_values = [1, 0.9, 0.8, 0.7, 0.6];
+
+
+x0 = 0.5; y0 = 0.5; z0 = 0.5;
+initial_conditions = [x0, y0, z0];
+t_span = [0, 1200];
+
+
+lineStyles = {'-', '--', ':', '-.', '-.'};
+
+% plot
+figure(1);
+hold on;
+
+xlim([0, 400]); 
+ylim([0, 1]); 
+xlabel('Time');
+ylabel('x');
+
+figure(2);
+hold on;
+
+xlim([0, 40]); 
+ylim([0.5, 1]); 
+xlabel('Time');
+ylabel('y');
+
+figure(3);
+hold on;
+xlim([0, 150]);
+ylim([0.5, 1]);
+xlabel('Time');
+ylabel('z');
+
+% cobination of all w1 and w3
+for idx = 1:length(w1_values)
+    w1 = w1_values(idx);
+    w3 = w3_values(idx);
+
+    fx_num_current = @(t, vars) fx_num(vars(1), vars(2), vars(3), a, b, b1, b2, w1, w2, w3, w4, c1, c2, B, q, I);
+    fy_num_current = @(t, vars) fy_num(vars(1), vars(2), vars(3), a, b, b1, b2, w1, w2, w3, w4, c1, c2, B, q, I);
+    fz_num_current = @(t, vars) fz_num(vars(1), vars(2), vars(3), a, b, b1, b2, w1, w2, w3, w4, c1, c2, B, q, I);
+
+    dynamic_system = @(t, vars) [
+        fx_num_current(t, vars);
+        fy_num_current(t, vars);
+        fz_num_current(t, vars)
+    ];
+
+    % solve ode
+    [t, solution] = ode45(dynamic_system, t_span, initial_conditions);
+
+    lineStyle = lineStyles{idx};
+
+    % plot
+    figure(1);
+    plot(t, solution(:, 1), 'LineStyle', lineStyle, 'LineWidth', 1.3, 'DisplayName', ['w1 = ' num2str(w1) ', w3 = ' num2str(B)]);
+
+    figure(2);
+    plot(t, solution(:, 2), 'LineStyle', lineStyle, 'LineWidth', 1.3, 'DisplayName', ['w1 = ' num2str(w1) ', w3 = ' num2str(B)]);
+
+    figure(3);
+    plot(t, solution(:, 3), 'LineStyle', lineStyle, 'LineWidth', 1.3, 'DisplayName', ['w1 = ' num2str(w1) ', w3 = ' num2str(B)]);
+end
+
+figure(1);
+legend;
+hold off;
+
+figure(2);
+legend;
+hold off;
+
+figure(3);
+legend;
+hold off;
