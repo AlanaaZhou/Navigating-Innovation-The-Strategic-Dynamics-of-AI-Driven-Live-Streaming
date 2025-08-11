@@ -1,0 +1,82 @@
+syms x y z a b b1 b2 w1 w2 w3 w4 c1 c2 B q I;
+
+%brand
+v11=(w1*(I+B)-c1)*(1-a-b1)*y*z+ ...
+    (w2*(I+B)-c1)*(1-a-b2)*y*(1-z)+ ...
+    (b*w1*(I+B)-c1)*(1-a-b1)*(1-y)*z+ ...
+    (b*w2*(I+B)-c1)*(1-a-b2)*(1-y)*(1-z);
+v12=(w3*I)*(1-a-b1)*y*z+ ...
+    (w4*I)*(1-a-b2)*y*(1-z)+ ...
+    (b*w3*I)*(1-a-b1)*(1-y)*z+ ...
+    (b*w4*I)*(1-a-b2)*(1-y)*(1-z);
+%v1=x*v11+(1-x)*v12
+%fx=x*(v11-v1)
+v1=simplify(x*v11+(1-x)*v12)
+fx=simplify(x*(v11-v1))
+
+%MCN
+v21=x*z*(a*(w1*(I+B)-c1))+ ...
+    x*(1-z)*(a*(w2*(I+B)-c1))+ ...
+    (1-x)*z*(a*w3*I)+ ...
+    (1-x)*(1-z)*(a*w4*I);
+v22=x*z*(a*(b*w1*(I+B)-c1)-q)+ ...
+    x*(1-z)*(a*(b*w2*(I+B)-c1))+ ...
+    (1-x)*z*(a*(b*w3*I)-q)+ ...
+    (1-x)*(1-z)*(a*b*w4*I);
+%v2=y*v21+(1-y)*v22
+%fy=y*(v21-v2)
+v2=simplify(y*v21+(1-y)*v22)
+fy=simplify(y*(v21-v2))
+
+%Platform
+v31=x*y*(b1*(w1*(I+B)-c1)-c2)+ ...
+ x*(1-y)*(b1*(b*w1*(I+B)-c1)+q-c2)+ ...
+(1-x)*y*(b1*w3*I-c2)+ ...
+(1-x)*(1-y)*(b1*(b*w3*I)-c2+q);
+v32=x*y*(b2*(w2*(I+B)-c1))+ ...
+    x*(1-y)*(b2*(b*w2*(I+B)-c1))+ ...
+    (1-x)*y*(b2*w4*I)+ ...
+    (1-x)*(1-y)*(b2*b*w4*I);
+%v3=z*v31+(1-z)*v32
+%fz=z*(v31-v3)
+v3=simplify(z*v31+(1-z)*v32)
+fz=simplify(z*(v31-v3))
+
+% Jacobian matrix
+J = simplify(jacobian([fx, fy, fz], [x, y, z]));
+disp('Jacobian matrix J = ');
+disp(J);
+
+% set equilibrium points
+equilibrium_points = [
+    0, 0, 0;
+    1, 0, 0;
+    0, 1, 0;
+    0, 0, 1;
+    1, 1, 0;
+    1, 0, 1;
+    0, 1, 1;
+    1, 1, 1
+];
+
+eig_values = cell(size(equilibrium_points, 1), 1);
+
+for i = 1:size(equilibrium_points, 1)
+    % get points
+    x_eq = equilibrium_points(i, 1);
+    y_eq = equilibrium_points(i, 2);
+    z_eq = equilibrium_points(i, 3);
+   
+    J_at_eq = vpa(subs(J, {x, y, z}, {x_eq, y_eq, z_eq}), 10);
+  
+ 
+    eig_vals = eig(J_at_eq);
+    eig_values{i} = eig_vals;
+    
+    % results
+    fprintf('均衡点 [%d, %d, %d]:\n', equilibrium_points(i, :));
+    disp('特征值：');
+    disp(eig_values{i});
+    disp('--------------------------------');
+end
+
